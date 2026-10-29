@@ -1,8 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="locked">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<script>try{if(localStorage.getItem("ballot-pass")==="b08d6cb585417dbfa61c81694b01d99eb43e1421325316c0ec23407d5d6256da")document.documentElement.classList.remove("locked")}catch(e){}</script>
 <meta name="description" content="Recommended votes for the November 3, 2026 Austin ballot, with a for-and-against on each city proposition.">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>Austin Ballot Picks</title>
@@ -111,9 +113,29 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
 @media (max-width: 560px) { .args { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: no-preference) { .reader:not([hidden]) .sheet { animation: rise .18s ease-out; } }
 @keyframes rise { from { transform: translateY(6px); opacity: .6; } to { transform: none; opacity: 1; } }
+
+/* Password screen */
+html.locked #home, html.locked .reader { display: none !important; }
+html:not(.locked) .gate { display: none; }
+.gate { min-height: 100vh; display: grid; place-items: center; padding-block: 24px; }
+.gate form { width: 100%; max-width: 340px; background: var(--card); border: 1px solid var(--rule); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+.gate h1 { margin: 0; font-size: 20px; }
+.gate label { font-size: 14px; color: var(--muted); }
+.gate input { font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--bg); color: var(--ink); }
+.gate input:focus-visible { outline: 3px solid var(--accent); outline-offset: 1px; }
+.gate .err { color: var(--against); font-size: 14px; min-height: 1.2em; margin: 0; }
 </style>
 </head>
 <body>
+<div class="gate gutter">
+  <form id="gate-form">
+    <h1>Austin Ballot Picks</h1>
+    <label for="gate-pass">Password</label>
+    <input type="password" id="gate-pass" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" required>
+    <button type="submit" class="btn">Open</button>
+    <p class="err" id="gate-err" role="alert"></p>
+  </form>
+</div>
 <main class="home gutter" id="home">
   <article class="doc">
     <div>
@@ -315,6 +337,30 @@ body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-a
   document.querySelectorAll(".open").forEach((b) => b.addEventListener("click", () => go(b.dataset.view)));
   document.querySelectorAll(".back").forEach((b) => b.addEventListener("click", () => go("")));
   show((location.hash || "").slice(1));
+
+  // Password screen (loose: keeps casual visitors out, not a real lock)
+  const PASS_HASH = "b08d6cb585417dbfa61c81694b01d99eb43e1421325316c0ec23407d5d6256da";
+  async function sha256(text) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  const gateForm = document.getElementById("gate-form");
+  const gateInput = document.getElementById("gate-pass");
+  const gateErr = document.getElementById("gate-err");
+  gateForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const h = await sha256(gateInput.value.trim().toLowerCase());
+    if (h === PASS_HASH) {
+      try { localStorage.setItem("ballot-pass", h); } catch (err) {}
+      document.documentElement.classList.remove("locked");
+      gateErr.textContent = "";
+      show((location.hash || "").slice(1));
+    } else {
+      gateErr.textContent = "That password isn't right. Try again.";
+      gateInput.select();
+    }
+  });
+  if (document.documentElement.classList.contains("locked")) gateInput.focus();
 
   // Downloads: plain file links on a static host
   document.querySelectorAll(".dl").forEach((btn) => {
